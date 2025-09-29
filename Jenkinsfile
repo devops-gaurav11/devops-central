@@ -7,12 +7,19 @@ kind: Pod
 spec:
   imagePullSecrets:
   - name: dockerhub-secret
+  volumes:
+  - name: npm-cache
+    persistentVolumeClaim:
+      claimName: npm-cache-pvc
   containers:
   - name: node
     image: node:22.18.0
     command:
     - cat
     tty: true
+    volumeMounts:
+    - name: npm-cache
+      mountPath: /root/.npm 
   - name: docker
     image: docker:20.10-dind
     securityContext:
@@ -64,9 +71,13 @@ spec:
 
     stage('Install Dependencies') {
       steps {
-        echo "📦 Installing Node.js dependencies"
+        echo "📦 Installing Node.js dependencies (with npm cache)"
         container('node') {
-          sh 'npm install'
+          // Use npm cache for faster installs
+          sh '''
+            echo "⚡ Using cached ~/.npm if available"
+            npm ci --prefer-offline --no-audit --progress=false
+          '''
         }
       }
     }
