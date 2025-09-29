@@ -1,7 +1,15 @@
-import React from 'react';
+import React, { act } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+
+// Mock Jenkins services used by the component
+jest.mock('../services/jenkins', () => ({
+  getMetrics: jest.fn().mockResolvedValue({ deploymentsToday: 1247, pipelineSuccess: 99, uptime: 99 }),
+  getFolderJobCount: jest.fn().mockResolvedValue({ total: 10 })
+}));
+
 import DevOpsHomepage from '../components/DevOpsHomepage';
+import { getMetrics } from '../services/jenkins';
 
 // Mock lucide-react icons to avoid rendering issues in tests
 jest.mock('lucide-react', () => ({
@@ -38,7 +46,7 @@ describe('DevOpsHomepage', () => {
     expect(screen.getByText('Deployments Today')).toBeInTheDocument();
     expect(screen.getByText('System Uptime')).toBeInTheDocument();
     expect(screen.getByText('Pipeline Success')).toBeInTheDocument();
-    expect(screen.getByText('Team Happiness')).toBeInTheDocument();
+    expect(screen.getByText('Jobs in Folder')).toBeInTheDocument();
   });
 
   test('renders all grateful items', () => {
@@ -65,20 +73,25 @@ describe('DevOpsHomepage', () => {
 
   test('deployment counter increments over time', async () => {
     jest.useFakeTimers();
+
+    // First refresh returns 1247, second refresh (after 30s poll) returns 1248
+    getMetrics
+      .mockResolvedValueOnce({ deploymentsToday: 1247, pipelineSuccess: 99, uptime: 99 })
+      .mockResolvedValueOnce({ deploymentsToday: 1248, pipelineSuccess: 99, uptime: 99 });
+
     render(<DevOpsHomepage />);
-    
-    const initialDeployments = screen.getByText(/1247/);
-    expect(initialDeployments).toBeInTheDocument();
-    
-    // Fast forward 10 seconds
-    jest.advanceTimersByTime(10000);
-    
-    await waitFor(() => {
-      // The deployment count should have potentially increased
-      const deploymentElement = screen.getByTestId('metrics-section');
-      expect(deploymentElement).toBeInTheDocument();
+
+    // Wait for the first refresh to paint 1247
+    await waitFor(() => expect(screen.getByText(/1247/)).toBeInTheDocument());
+
+    // Advance to the next polling interval (30s) to trigger another refresh
+    await act(async () => {
+      jest.advanceTimersByTime(30000);
     });
-    
+
+    // Wait for the updated value 1248 to appear
+    await waitFor(() => expect(screen.getByText(/1248/)).toBeInTheDocument());
+
     jest.useRealTimers();
   });
 });
