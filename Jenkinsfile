@@ -5,15 +5,14 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
+  imagePullSecrets:
+  - name: dockerhub-secret
   containers:
   - name: node
-    image: node:18-alpine
+    image: node:22.18.0
     command:
     - cat
     tty: true
-    volumeMounts:
-    - mountPath: /home/jenkins/agent
-      name: jenkins-docker-cache
   # Docker CLI container (talks to host Docker)
   - name: docker
     image: docker:20.10-dind
@@ -108,6 +107,20 @@ spec:
       }
     }
 
+    stage('Run Tests') {
+      when { expression { env.BRANCH_NAME.startsWith("feature/") } }
+      steps {
+        echo "🧪 Running Unit Tests"
+        container('node') {
+          sh 'JEST_JUNIT_OUTPUT=test-results.xml npx jest-junit && CI=true react-scripts test --coverage --watchAll=false --reporters=default --reporters=jest-junit'
+          junit allowEmptyResults: true, testResults: 'test-results.xml'
+          publishCoverage adapters: [
+            publishCoverageAdapter('lcov', 'coverage/lcov.info')
+          ], sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
+        }
+      }
+    }
+
     stage('Build') {
       when {
         anyOf {
@@ -126,19 +139,7 @@ spec:
       }
     }
 
-    stage('Run Tests') {
-      when { expression { env.BRANCH_NAME.startsWith("feature/") } }
-      steps {
-        echo "🧪 Running Unit Tests"
-        container('node') {
-          sh 'npm test -- --coverage --passWithNoTests'
-          publishTestResults testResultsPattern: 'test-results.xml'
-          publishCoverage adapters: [
-            publishCoverageAdapter('lcov', 'coverage/lcov.info')
-          ], sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
-        }
-      }
-    }
+    
 
 
     stage('SonarQube Scan') {
