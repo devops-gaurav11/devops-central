@@ -1,4 +1,5 @@
 {
+  "proxy": "http://80.225.201.22:8080",
   "name": "devops-grateful-homepage",
   "version": "1.0.0",
   "private": true,

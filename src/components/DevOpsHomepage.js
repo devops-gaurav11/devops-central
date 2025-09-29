@@ -1,25 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Server, GitBranch, Shield, Zap, Users, Heart, CheckCircle, TrendingUp } from 'lucide-react';
+import { Server, GitBranch, Shield, Zap, Users, Heart, TrendingUp } from 'lucide-react';
 import MetricCard from './MetricCard';
 import GratefulCard from './GratefulCard';
+import { getMetrics, getFolderJobCount } from '../services/jenkins';
 
 const DevOpsHomepage = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [deploymentCount, setDeploymentCount] = useState(1247);
-  const [uptime, setUptime] = useState(99.9);
+  const [deploymentCount, setDeploymentCount] = useState(0);
+  const [uptime, setUptime] = useState(0);
+  const [pipelineSuccess, setPipelineSuccess] = useState(0);
+  const [jobCount, setJobCount] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    async function refresh() {
+      try {
+        const { deploymentsToday, pipelineSuccess, uptime } = await getMetrics();
+        setDeploymentCount(deploymentsToday);
+        setPipelineSuccess(pipelineSuccess);
+        setUptime(uptime);
 
-    const deploymentTimer = setInterval(() => {
-      setDeploymentCount(prev => prev + Math.floor(Math.random() * 3));
-    }, 10000);
+        // Get job count from folder if configured
+        const folder = process.env.REACT_APP_JENKINS_FOLDER;
+        if (folder) {
+          const { total } = await getFolderJobCount(folder, true);
+          setJobCount(total);
+        }
+      } catch (e) {
+        console.error('Refresh error:', e);
+      }
+    }
+    refresh();
+    const poll = setInterval(refresh, 30000);
 
     return () => {
       clearInterval(timer);
-      clearInterval(deploymentTimer);
+      clearInterval(poll);
     };
   }, []);
 
@@ -59,8 +75,8 @@ const DevOpsHomepage = () => {
   const metrics = [
     { label: "Deployments Today", value: deploymentCount, color: "text-green-600" },
     { label: "System Uptime", value: `${uptime}%`, color: "text-blue-600" },
-    { label: "Pipeline Success", value: "98.5%", color: "text-purple-600" },
-    { label: "Team Happiness", value: "❤️ 100%", color: "text-red-500" }
+    { label: "Pipeline Success", value: `${pipelineSuccess}%`, color: "text-purple-600" },
+    { label: "Jobs in Folder", value: jobCount, color: "text-amber-400" }
   ];
 
   return (
