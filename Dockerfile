@@ -1,5 +1,5 @@
 # --- Build stage ---
-FROM node:22-alpine AS builder
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # --- Runtime stage ---
-FROM nginx:1.25-alpine
+FROM public.ecr.aws/docker/library/nginx:1.25-alpine
 
 # Copy production build to Nginx
 COPY --from=builder /app/build /usr/share/nginx/html

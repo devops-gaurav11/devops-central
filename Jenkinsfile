@@ -26,7 +26,7 @@ spec:
   }
 
   environment {
-    DOCKER_IMAGE = "${JOB_BASE_NAME}:${BUILD_NUMBER}"
+    DOCKER_IMAGE = "node-project:${BUILD_NUMBER}"
     DEVTRON_URL = 'http://80.225.201.22:8000/orchestrator/webhook/ext-ci/3'
   }
 
@@ -100,17 +100,17 @@ spec:
       }
     }
 
-    stage('Build') {
-      when { anyOf { expression { env.BRANCH_NAME.startsWith("feature/") }; branch 'develop' } }
-      steps {
-        echo "🚀 Building React App"
-        container('node') {
-          sh '''
-            npm run build
-          '''
-        }
-      }
-    }
+    // stage('Build') {
+    //   when { anyOf { expression { env.BRANCH_NAME.startsWith("feature/") }; branch 'develop' } }
+    //   steps {
+    //     echo "🚀 Building React App"
+    //     container('node') {
+    //       sh '''
+    //         npm run build
+    //       '''
+    //     }
+    //   }
+    // }
 
     stage('SonarQube Scan') {
       when { expression { env.BRANCH_NAME.startsWith("feature/") } }
@@ -132,7 +132,11 @@ spec:
       steps {
         container('docker') {
           echo "🐳 Building Docker image..."
-          sh "docker build -t ${DOCKER_IMAGE} . && docker images ${DOCKER_IMAGE}"
+          withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+            sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin || true'
+          }
+          sh "docker build --pull -t ${DOCKER_IMAGE} . && docker images ${DOCKER_IMAGE}"
+          sh 'docker logout || true'
         }
       }
     }
