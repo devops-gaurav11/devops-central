@@ -48,7 +48,8 @@
       "text",
       "text-summary",
       "cobertura",
-      "html"
+      "html",
+      "lcov"
     ]
   },
   "devDependencies": {
