@@ -36,7 +36,9 @@ spec:
     DOCKER_IMAGE = "node-project:${BUILD_NUMBER}"
     DEVTRON_URL = 'http://80.225.201.22:8000/orchestrator/webhook/ext-ci/3'
   }
-
+  triggers {
+        pollSCM('* * * * *')
+  }
   options {
     disableConcurrentBuilds()
     buildDiscarder(logRotator(numToKeepStr: '10', daysToKeepStr: '30', artifactNumToKeepStr: '5'))
@@ -82,14 +84,6 @@ spec:
       }
     }
 
-    // stage('Lint') {
-    //   steps {
-    //     echo "🔎 Running ESLint"
-    //     container('node') {
-    //       sh 'npm run lint'
-    //     }
-    //   }
-    // }
 
     stage('Run Tests') {
       when { expression { env.BRANCH_NAME.startsWith("feature/") } }
